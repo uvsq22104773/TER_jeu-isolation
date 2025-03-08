@@ -23,7 +23,7 @@
 - **Propagation** :
   - Si un sommet $x$ est infecté à l’étape $T(x)=t$, alors, pour tout arc $[x,y]$ toujours actif (non coupé) menant vers un sommet non infecté $y$, le sommet $y$ sera infecté à l’étape : 
   <br> $T(y) = t + \tau([x,y])$ 
-  <br> *à condition que l’arc $[x,y]$ n’ait pas été supprimé avant l’instant $t + \tau([x,y])$.*
+  <br> *à condition que l’arc* $[x,y]$ *n’ait pas été supprimé avant l’instant* $t + \tau([x,y])$*.*
 
 ### Interventions (Suppression d’Arcs)
 - **Principe** : À chaque étape temporelle (discrète), on peut supprimer un arc du graphe si $\lambda = 1$, ce qui revient à « fermer un canal » et empêcher ainsi l’infection par ce lien.
