@@ -12,7 +12,7 @@
 - **Représentation** : Le graphe est fourni sous forme d’une matrice d’adjacence $M$ où :
   - $M[i][j] = \tau([i,j])$ si l’arc $[i,j]$ existe,
   - $M[i][j] = 0$ sinon.
-- **Source de Propagation** : Un sommet $ r \in V* est le point de départ de l’infection.
+- **Source de Propagation** : Un sommet $r \in V$ est le point de départ de l’infection.
 
 ### Dynamique de Propagation
 - **Initialisation** :
