@@ -1,4 +1,4 @@
-<h1 align="center">TER - Jeu Isolation</h1>
+# TER - Jeu Isolation
 
 Ce projet de TER, intitulé « Jeu d’isolation de propagation dans un graphe de flux », s’inscrit dans le domaine de la sécurité des réseaux de distribution d’eau et vise à étudier un phénomène de propagation dans un graphe. Le graphe, représenté par une matrice d’adjacence, modélise les différents canaux (arcs) de propagation, chacun étant associé à un délai caractérisant le temps nécessaire pour que l’infection se propage d’un sommet à un autre. Dès l’étape initiale, un seul sommet – considéré comme la source – est infecté, et la dynamique du problème consiste à observer la diffusion de cette infection selon des délais prédéfinis.
 
@@ -27,16 +27,16 @@ Ce projet se déploie en deux volets complémentaires : d’une part, la modéli
     - $T(r) = 0$
     - $T(v) = +\infty$ pour tout $v \neq r$.
 - **Propagation** :
-  - Si un sommet $x$ est infecté à l’étape $T(x)=t$, alors, pour tout arc $[x,y]$ toujours actif (non coupé) menant vers un sommet non infecté $y$, le sommet $y$ sera infecté à l’étape : 
-  <br> $T(y) = t + \tau([x,y])$ 
-  <br> *à condition que l’arc* $[x,y]$ *n’ait pas été supprimé avant l’instant* $t + \tau([x,y])$*.*
+  - Si un sommet $x$ est infecté à l’étape $T(x)=t$, alors, pour tout arc $[x,y]$ toujours actif (non coupé) menant vers un sommet non infecté $y$, le sommet $y$ sera infecté à l’étape :\
+  $T(y) = t + \tau([x,y])$\
+  *à condition que l’arc* $[x,y]$ *n’ait pas été supprimé avant l’instant* $t + \tau([x,y])$*.*
 
 ### Interventions (Suppression d’Arcs)
 - **Principe** : À chaque étape temporelle (discrète), on peut supprimer un arc du graphe si $\lambda = 1$, ce qui revient à « fermer un canal » et empêcher ainsi l’infection par ce lien.
 - **Séquence d’Actions** :
   - On cherche à établir une liste $L$ d’arcs à supprimer, où l’ordre dans $L$ correspond à l’ordre chronologique des suppressions.
-  - L’intervention sur un arc $[x,y]$ doit être réalisée avant que l’infection ne se propage par ce lien, c’est-à-dire avant l’instant critique :
-  <br> $t_{\text{crit}}([x,y]) = T(x) + \tau([x,y])$
+  - L’intervention sur un arc $[x,y]$ doit être réalisée avant que l’infection ne se propage par ce lien, c’est-à-dire avant l’instant critique :\
+  $t_{\text{crit}}([x,y]) = T(x) + \tau([x,y])$
 - **Contrainte d’Intervention** :
   - À chaque étape $t$, une seule suppression est autorisée.
   - On ne peut supprimer un arc $[x,y]$ que si l’instant actuel $t$ est strictement inférieur à $t_{\text{crit}}([x,y])$.
