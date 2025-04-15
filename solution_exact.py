@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 import itertools
+import sys
 
 # Structure pour un graph
 @dataclass
@@ -22,7 +23,7 @@ def load_graph(filename):
             if firstline:
                 firstline = False
                 nodes, infest = line.strip().split()
-                graph.arcs = {node: [] for node in range(int(nodes))}
+                graph.arcs = {node: [] for node in range(1, int(nodes)+1)}
                 graph.infest = int(infest)
             else:
                 parent, child = line.strip().split()
@@ -55,6 +56,15 @@ def saved_nodes_count(graph, rm_arcs):
 
     return len(graph.arcs) - len(infected_nodes)
 
+def factorielle(n):
+    """
+    Calcule la factorielle de n.
+    """
+    resultat = 1
+    for i in range(1, n + 1):
+        resultat *= i
+    return resultat
+
 def best_order_arcs(graph):
     """
     Trouve l'ordre d'arcs qui minimise le nombre de noeuds infectés.
@@ -63,7 +73,13 @@ def best_order_arcs(graph):
     # et on garde la meilleure
     best_count = -1
     best_order = None
+    n = factorielle(len(graph.list_arcs))
+    i = 0
+    print(f"\rProgression : {i/n*100}%", end="")
     for perm in itertools.permutations(graph.list_arcs):
+        i += 1
+        if i % 1000 == 0:
+            print(f"\rProgression : {(i/n)*100:.1f}%", end="")
         count = saved_nodes_count(graph, perm)
         if count > best_count:
             best_count = count
@@ -75,14 +91,52 @@ def best_order_arcs(graph):
     while len(best_order) > 1 and best_count == saved_nodes_count(graph, best_order[:-1]):
         best_order = best_order[:-1]
 
+    print(f"\rProgression : {100.0}%", end="")
     return best_order
+
+def ajouter_au_debut(fichier, texte_a_ajouter):
+    with open(fichier, 'r') as f:
+        lignes = f.readlines()
+
+    # Modifier la première ligne
+    if lignes:
+        lignes[0] = lignes[0][:len(lignes[0])-1] + " " + texte_a_ajouter + "\n"
+    else:
+        lignes = [texte_a_ajouter + "\n"]
+
+    with open(fichier, 'w') as f:
+        f.writelines(lignes)
+
+'''
+Ajout sur la première ligne du fichier 
+la suite d'arcs optimale et le 
+nombre de noeuds sauvés.
+'''
+
+def solution_for_n_tree(n):
+    """
+    Trouve la solution pour n arbres orientés aléatoires.
+    """
+    result = []
+    print(f"\rProgression globale : 0.0%")
+    for i in range(n):
+        sys.stdout.write("\033[F")
+        print(f"\rProgression globale : {(i/n)*100:.1f}%")
+        filename = f"tree/arbre_{i}.txt"
+        graph = load_graph(filename)
+        order = best_order_arcs(graph)
+        count = saved_nodes_count(graph, order)
+        add_str = "[" + " ".join(map(str, order)) + "] " + str(count)
+        ajouter_au_debut(filename, add_str)
+
+    print()
+    return result
 
 if __name__ == "__main__":
     # Exemple d'utilisation
-    filename = "dag/dag_0.txt"
+    filename = "tree/arbre_9.txt"
     graph = load_graph(filename)
     # print(f"{graph.arcs}")
     # print(saved_nodes_count(graph, [(2, 0), (4, 2)]))
-    best = best_order_arcs(graph)
-    print(best)
-    print(saved_nodes_count(graph, best))
+    for elem in solution_for_n_tree(30):
+        print(f"{elem[0]}, {elem[1]}")
