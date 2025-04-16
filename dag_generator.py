@@ -36,7 +36,7 @@ def creer_arbre_oriente_racine_aleatoire(n):
     """
     # Créer la liste des nœuds et la mélanger
     nodes = list(range(1, n+1))
-    random.shuffle(nodes)
+    # random.shuffle(nodes)
     
     # Le premier nœud de la liste mélangée est choisi comme racine
     #racine = nodes[0]
