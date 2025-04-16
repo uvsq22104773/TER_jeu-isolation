@@ -116,21 +116,76 @@ def plusGrandSousArbreFirst(tree, ls = [1], res = []):
     else:
         sub_res, sub_total = plusGrandSousArbreFirst(tree, aTraiter, res)
         return sub_res, maxGlobal + sub_total
+    
+def plusGrandSousArbrePuisFils(tree, ls = [1], res = []):
+    maxGlobal = 0
+    areteGlobale = None
+    aTraiter = []
+
+    for s in ls:
+        maxFils = 0
+        maxSommet = 0
+        arete = None
+
+        if s not in tree:
+            continue
+
+        for fs in tree[s]:
+            aTraiter.append(fs)
+            nbFils = len(tree[fs]) if fs in tree else 0
+            nbSommet = calcul(tree, fs)
+
+            if nbSommet > maxSommet:
+                maxFils = nbFils
+                maxSommet = nbSommet
+                arete = (s, fs)
+            elif nbSommet == maxSommet and nbFils > maxFils:
+                maxFils = nbFils
+                maxSommet = nbSommet
+                arete = (s, fs)
+
+        if maxSommet > maxGlobal:
+            maxGlobal = maxSommet
+            areteGlobale = arete
+
+    if areteGlobale:
+        res.append(areteGlobale)
+        if areteGlobale[1] in aTraiter:
+            aTraiter.remove(areteGlobale[1])
+
+    if not aTraiter:
+        return res, maxGlobal
+    else:
+        sub_res, sub_max = plusGrandSousArbrePuisFils(tree, aTraiter, res)
+        return sub_res, maxGlobal + sub_max
+
 
 def choisir_voisin(graph, s):
     voisin = s[:]
-    voisin.remove(random.choice(voisin))
-    arc = random.choice(graph.list_arcs)
-    while arc in voisin:
+    prof = 9
+    liste_cas = ["replace"]
+    if len(voisin) < prof:
+        liste_cas.append("add")
+    cas = random.choice(liste_cas)
+    if cas == "replace":
+        voisin.remove(random.choice(voisin))
         arc = random.choice(graph.list_arcs)
-    voisin.append(arc)
+        while arc in voisin:
+            arc = random.choice(graph.list_arcs)
+        voisin.append(arc)
+    #elif cas == "add":
+    else:
+        arc = random.choice(graph.list_arcs)
+        while arc in voisin:
+            arc = random.choice(graph.list_arcs)
+        voisin.append(arc)
     return voisin
 
 def recuit_simule(graph, s, T):
     solution_max = s[:]
     valeur_max = saved_nodes_count(graph, solution_max)
     tours = 0
-    while T > 1:
+    while T > 0.001:
         s_prime = choisir_voisin(graph, s)
         valeur = saved_nodes_count(graph, s_prime)
 
@@ -145,7 +200,7 @@ def recuit_simule(graph, s, T):
             if random.random() < proba:
                 s = s_prime
 
-        T *= 0.99  # Refroidissement
+        T *= 0.999  # Refroidissement
         tours += 1
     print("nombre de tours : " + str(tours))
     return solution_max, valeur_max
@@ -155,14 +210,16 @@ def recuit_simule(graph, s, T):
 graph = load_graph("tree/arbre_0.txt")
 
 
-result, total = plusGrandSousArbreFirst(graph.arcs)
+result, total = plusGrandNombreDeFilsPuisGrandSousArbre(graph.arcs)
+res, tot = plusGrandSousArbreFirst(graph.arcs)
+r, t = plusGrandSousArbrePuisFils(graph.arcs)
 
 
-print("Arêtes supprimées :", result)
-print("Nombre de sommets sauvés :", total)
+print("Arêtes supprimées :", result, " ou alors :", res, " ou alors :", r)
+print("Nombre de sommets sauvés :", total, "ou alors :", tot, " ou alors :", t)
 
-resultat, total = recuit_simule(graph, result, 100)
-print(resultat, total)
+#resultat, total = recuit_simule(graph, result, 100)
+#print(resultat, total)
 
 def test():
     for i in range(1):
