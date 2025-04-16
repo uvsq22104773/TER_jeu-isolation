@@ -57,7 +57,8 @@ def algo2(ls, res):
     if not aTraiter:
         return res, maxGlobal
     else:
-        return res, maxGlobal + algo2(aTraiter, res)
+        sub_res, sub_total = algo2(aTraiter, res)
+        return res, maxGlobal + sub_total
 
 # Lancement de l'algo
 result, total = algo2([0], [])

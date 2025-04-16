@@ -39,7 +39,8 @@ def creer_arbre_oriente_racine_aleatoire(n):
     random.shuffle(nodes)
     
     # Le premier nœud de la liste mélangée est choisi comme racine
-    racine = nodes[0]
+    #racine = nodes[0]
+    racine = 1
     
     # Initialiser le dictionnaire pour chaque nœud avec une liste vide qui contiendra ses enfants
     arbre = {node: [] for node in nodes}
@@ -108,7 +109,8 @@ def create_file(filename, dag):
     """
     with open(filename, 'w') as f:
         t = len(dag)
-        f.write(f"{t} {random.randint(1, t)}\n")
+        # f.write(f"{t} {random.randint(1, t)}\n")
+        f.write(f"{t} {1}\n")
         for node, successors in dag.items():
             for successor in successors:
                 f.write(f"{node} {successor}\n")
@@ -149,5 +151,5 @@ if __name__ == "__main__":
     n = 5   # Nombre de nœuds dans le DAG
     p = 0.3  # Probabilité pour l'ajout d'arêtes supplémentaires
     # create_n_dag(30, 7, p)  # Crée 10 DAGs aléatoires avec 5 nœuds chacun
-    create_n_tree(1, 13)  # Crée 10 arbres orientés aléatoires avec 5 nœuds chacun
+    create_n_tree(30, 10)  # Crée 10 arbres orientés aléatoires avec 5 nœuds chacun
     # create_n_dag(1, 100)
