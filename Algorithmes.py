@@ -155,7 +155,7 @@ def recuit_simule(graph, s, T):
 graph = load_graph("tree/arbre_0.txt")
 
 
-result, total = plusGrandSousArbreFirst(graph.arcs, [45])
+result, total = plusGrandSousArbreFirst(graph.arcs)
 
 
 print("Arêtes supprimées :", result)
@@ -163,3 +163,14 @@ print("Nombre de sommets sauvés :", total)
 
 resultat, total = recuit_simule(graph, result, 100)
 print(resultat, total)
+
+def test():
+    for i in range(1):
+        txt = "tree/arbre_"+str(i)+".txt"
+        graph = load_graph(txt)
+        result1, total1 = plusGrandSousArbreFirst(graph.arcs)
+        result2, total2 = recuit_simule(graph, result1, 100)
+        if result1 != result2:
+            print("différence : ")
+            print(result1, total1)
+            print(result2, total2)
