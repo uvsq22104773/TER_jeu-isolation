@@ -49,7 +49,8 @@ def algo(ls, res):
     if not aTraiter:
         return res, maxGlobal
     else:
-        return res, maxGlobal + algo(aTraiter, res)
+        sub_res, sub_total = algo(aTraiter, res)
+        return res, maxGlobal + sub_total
 
 # Appel de l'algo sur le sommet racine [0]
 result, total = algo([0], [])

@@ -76,7 +76,7 @@ def creer_dag_aleatoire_connexe(n, p=0.3):
                              la valeur associée est la liste de ses successeurs.
     """
     # 1. Création et mélange des nœuds pour établir un ordre aléatoire
-    nodes = list(range(n))
+    nodes = list(range(1, n+1))
     random.shuffle(nodes)
     
     # Initialisation du DAG : chaque nœud aura une liste vide de successeurs
@@ -148,6 +148,6 @@ def create_n_tree(n, taille = 10):
 if __name__ == "__main__":
     n = 5   # Nombre de nœuds dans le DAG
     p = 0.3  # Probabilité pour l'ajout d'arêtes supplémentaires
-    # create_n_dag(10, n, p)  # Crée 10 DAGs aléatoires avec 5 nœuds chacun
-    create_n_tree(30, 10)  # Crée 10 arbres orientés aléatoires avec 5 nœuds chacun
+    # create_n_dag(30, 7, p)  # Crée 10 DAGs aléatoires avec 5 nœuds chacun
+    create_n_tree(1, 13)  # Crée 10 arbres orientés aléatoires avec 5 nœuds chacun
     # create_n_dag(1, 100)

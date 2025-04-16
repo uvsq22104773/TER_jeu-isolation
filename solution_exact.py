@@ -113,7 +113,7 @@ la suite d'arcs optimale et le
 nombre de noeuds sauvés.
 '''
 
-def solution_for_n_tree(n):
+def solution_for_n_tree(n, fn):
     """
     Trouve la solution pour n arbres orientés aléatoires.
     """
@@ -122,21 +122,16 @@ def solution_for_n_tree(n):
     for i in range(n):
         sys.stdout.write("\033[F")
         print(f"\rProgression globale : {(i/n)*100:.1f}%")
-        filename = f"tree/arbre_{i}.txt"
+        filename = f"{fn}{i}.txt"
         graph = load_graph(filename)
         order = best_order_arcs(graph)
         count = saved_nodes_count(graph, order)
         add_str = "[" + " ".join(map(str, order)) + "] " + str(count)
         ajouter_au_debut(filename, add_str)
-
     print()
-    return result
 
 if __name__ == "__main__":
     # Exemple d'utilisation
-    filename = "tree/arbre_9.txt"
-    graph = load_graph(filename)
     # print(f"{graph.arcs}")
     # print(saved_nodes_count(graph, [(2, 0), (4, 2)]))
-    for elem in solution_for_n_tree(30):
-        print(f"{elem[0]}, {elem[1]}")
+    solution_for_n_tree(1, "tree/arbre_")
