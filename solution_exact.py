@@ -1,6 +1,9 @@
 from dataclasses import dataclass
 import itertools
 import sys
+import multiprocessing
+import itertools
+from collections import deque
 
 # Structure pour un graph
 @dataclass
@@ -31,30 +34,42 @@ def load_graph(filename):
                 graph.list_arcs.append((int(parent), int(child)))
     return graph
 
-def saved_nodes_count(graph, rm_arcs):
+def saved_nodes_count(graph, chain):
     """
     Compte le nombre de noeuds sauver dans un graph
     à partir d'une suite d'arcs.
     """
-    infected_nodes = set()
-    infected_nodes.add(graph.infest)
-    copy_arcs = {}
-    for node in graph.arcs:
-        copy_arcs[node] = graph.arcs[node].copy()
-    for arc in rm_arcs:
-        copy_arcs[arc[0]].remove(arc[1])
-        for node in list(infected_nodes):
-            infected_nodes.update(copy_arcs[node])
-    
-    while True:
-        new_infected = set()
-        for node in infected_nodes:
-            new_infected.update(copy_arcs[node])
-        if not new_infected - infected_nodes:
-            break
-        infected_nodes.update(new_infected)
+    # Ensemble des arcs à supprimer au fur et à mesure
+    removed = set()
+    # Sommets infectés et frontière actuelle
+    infected = {graph.infest}
+    frontier = {graph.infest}
 
-    return len(graph.arcs) - len(infected_nodes)
+    for u, v in chain:
+        # 1) suppression de l'arc
+        removed.add((u, v))
+
+        # 2) propagation d'un pas
+        new_frontier = set()
+        for x in frontier:
+            for y in graph.arcs.get(x, []):
+                if (x, y) not in removed and y not in infected:
+                    infected.add(y)
+                    new_frontier.add(y)
+        frontier = new_frontier
+
+    # Optionnel : propagation finale jusqu'à stabilisation
+    queue = deque(frontier)
+    while queue:
+        x = queue.popleft()
+        for y in graph.arcs.get(x, []):
+            if (x, y) not in removed and y not in infected:
+                infected.add(y)
+                queue.append(y)
+
+    # Calcul des sommets sauvés
+    all_nodes = set(graph.arcs.keys()) | {v for children in graph.arcs.values() for v in children}
+    return len(all_nodes) - len(infected)
 
 def factorielle(n):
     """
@@ -65,33 +80,54 @@ def factorielle(n):
         resultat *= i
     return resultat
 
-def best_order_arcs(graph):
+def _evaluate_perm(args):
+    graph_data, perm = args
+    arcs_dict, infest = graph_data
+    graph_copy = Graph(infest, {k: v.copy() for k, v in arcs_dict.items()}, list(perm))
+    return (saved_nodes_count(graph_copy, perm), perm)
+
+def best_order_arcs_multithreading(graph):
     """
     Trouve l'ordre d'arcs qui minimise le nombre de noeuds infectés.
+    Version optimisée sans surcharge mémoire (pas de stockage global des permutations).
     """
-    # On génère toutes les permutations des arcs
-    # et on garde la meilleure
+    graph_data = (graph.arcs, graph.infest)
+    total_perms = factorielle(len(graph.list_arcs))
+    batch_size = 1000
+
+    if total_perms > 10000:
+        diviseur = 1000
+    elif total_perms < 100:
+        diviseur = 1
+    else:
+        diviseur = 10
+
     best_count = -1
     best_order = None
-    n = factorielle(len(graph.list_arcs))
     i = 0
-    print(f"\rProgression : {i/n*100}%", end="")
-    for perm in itertools.permutations(graph.list_arcs):
-        i += 1
-        if i % 1000 == 0:
-            print(f"\rProgression : {(i/n)*100:.1f}%", end="")
-        count = saved_nodes_count(graph, perm)
-        if count > best_count:
-            best_count = count
-            best_order = perm
-        
-    # On enlève les arcs qui ne sont pas nécessaires
-    best_order = list(best_order)
-    # Tant que la liste a plus d'un élément
-    while len(best_order) > 1 and best_count == saved_nodes_count(graph, best_order[:-1]):
-        best_order = best_order[:-1]
 
-    print(f"\rProgression : {100.0}%", end="")
+    # Créer un générateur de permutations
+    perm_generator = itertools.permutations(graph.list_arcs)
+
+    with multiprocessing.Pool() as pool:
+        while True:
+            # Préparer un batch de permutations
+            batch = list(itertools.islice(perm_generator, batch_size))
+            if not batch:
+                break
+
+            # Appliquer la fonction en parallèle sur le batch
+            results = pool.map(_evaluate_perm, ((graph_data, perm) for perm in batch))
+
+            for count, perm in results:
+                i += 1
+                if i % total_perms//diviseur == 0 or i == total_perms:
+                    print(f"\rProgression : {(i / total_perms) * 100:.1f}%", end="")
+                if count > best_count:
+                    best_count = count
+                    best_order = perm
+
+    print("\rProgression : 100%")
     return best_order
 
 def ajouter_au_debut(fichier, texte_a_ajouter):
@@ -124,7 +160,7 @@ def solution_for_n_tree(n, fn):
         print(f"\rProgression globale : {(i/n)*100:.1f}%")
         filename = f"{fn}{i}.txt"
         graph = load_graph(filename)
-        order = best_order_arcs(graph)
+        order = best_order_arcs_multithreading(graph)
         count = saved_nodes_count(graph, order)
         add_str = "[" + " ".join(map(str, order)) + "] " + str(count)
         ajouter_au_debut(filename, add_str)
@@ -134,4 +170,24 @@ if __name__ == "__main__":
     # Exemple d'utilisation
     # print(f"{graph.arcs}")
     # print(saved_nodes_count(graph, [(2, 0), (4, 2)]))
-    solution_for_n_tree(1, "tree/arbre_")
+    # solution_for_n_tree(1, "tree/arbre_")
+    print("arbre_6.txt")
+    graph = load_graph("tree/arbre_6.txt")
+    best_order = best_order_arcs_multithreading(graph)
+    print(best_order)
+    print(saved_nodes_count(graph, best_order))
+    """
+    print("\n")
+
+    print("arbre_0.txt - simple")
+    graph = load_graph("tree/arbre_0.txt")
+    best_order = best_order_arcs(graph)
+    print(best_order)
+    print(saved_nodes_count(graph, best_order))
+    """
+    print("\n")
+    print("arbre_1.txt - multithreading")
+    graph = load_graph("tree/arbre_1.txt")
+    best_order = best_order_arcs_multithreading(graph)
+    print(best_order)
+    print(saved_nodes_count(graph, best_order))
