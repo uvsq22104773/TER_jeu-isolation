@@ -41,7 +41,11 @@ def calcul(tree, sommet):
         return 1
     return 1 + sum(calcul(tree, fils) for fils in tree[sommet])
 
-def plusGrandNombreDeFilsPuisGrandSousArbre(tree, ls = [1], res = []):
+def plusGrandNombreDeFilsPuisGrandSousArbre(tree, ls=None, res=None):
+    if ls is None:
+        ls = [1]
+    if res is None:
+        res = []
     maxGlobal = 0
     areteGlobale = None
     aTraiter = []
@@ -83,14 +87,18 @@ def plusGrandNombreDeFilsPuisGrandSousArbre(tree, ls = [1], res = []):
         sub_res, sub_max = plusGrandNombreDeFilsPuisGrandSousArbre(tree, aTraiter, res)
         return sub_res, maxGlobal + sub_max
 
-def plusGrandSousArbreFirst(tree, ls = [1], res = []):
+def plusGrandSousArbreFirst(tree, ls=None, res=None):
+    if ls is None:
+        ls = [1]
+    if res is None:
+        res = []
     maxGlobal = 0
     arêteGlobal = None
     aTraiter = []
 
     for s in ls:
         if s not in tree:
-            continue  # Pas de fils
+            continue
 
         max_local = 0
         arête = None
@@ -117,7 +125,11 @@ def plusGrandSousArbreFirst(tree, ls = [1], res = []):
         sub_res, sub_total = plusGrandSousArbreFirst(tree, aTraiter, res)
         return sub_res, maxGlobal + sub_total
     
-def plusGrandSousArbrePuisFils(tree, ls = [1], res = []):
+def plusGrandSousArbrePuisFils(tree, ls=None, res=None):
+    if ls is None:
+        ls = [1]
+    if res is None:
+        res = []
     maxGlobal = 0
     areteGlobale = None
     aTraiter = []
@@ -160,74 +172,105 @@ def plusGrandSousArbrePuisFils(tree, ls = [1], res = []):
         return sub_res, maxGlobal + sub_max
 
 
+def get_descendants(graph, start, visited=None):
+    if visited is None:
+        visited = set()
+    for neighbor in graph.get(start, []):
+        if neighbor not in visited:
+            visited.add(neighbor)
+            get_descendants(graph, neighbor, visited)
+    return visited
+
+def filter_edges(graph, edges_to_remove):
+    # Trouver tous les descendants des arêtes à supprimer
+    nodes_to_exclude = set()
+    for src, dst in edges_to_remove:
+        nodes_to_exclude.add(dst)
+        descendants = get_descendants(graph, dst)
+        nodes_to_exclude.update(descendants)
+    
+    # Construire la liste finale des arêtes
+    remaining_edges = []
+    for src, neighbors in graph.items():
+        for dst in neighbors:
+            if src in nodes_to_exclude or dst in nodes_to_exclude:
+                continue
+            remaining_edges.append((src, dst))
+    return remaining_edges
+
+
 def choisir_voisin(graph, s):
     voisin = s[:]
-    prof = 9
-    liste_cas = ["replace"]
-    if len(voisin) < prof:
-        liste_cas.append("add")
-    cas = random.choice(liste_cas)
-    if cas == "replace":
-        voisin.remove(random.choice(voisin))
-        arc = random.choice(graph.list_arcs)
-        while arc in voisin:
-            arc = random.choice(graph.list_arcs)
-        voisin.append(arc)
-    #elif cas == "add":
-    else:
-        arc = random.choice(graph.list_arcs)
-        while arc in voisin:
-            arc = random.choice(graph.list_arcs)
-        voisin.append(arc)
+
+    voisin.remove(random.choice(voisin))
+    arcs_to_choose = filter_edges(graph.arcs, voisin)
+    arcs_to_choose = graph.list_arcs
+   
+    if arcs_to_choose == []:
+        return voisin
+    arc = random.choice(arcs_to_choose)
+    while arc in voisin:
+        arc = random.choice(arcs_to_choose)
+    voisin.append(arc)
+
     return voisin
 
 def recuit_simule(graph, s, T):
     solution_max = s[:]
     valeur_max = saved_nodes_count(graph, solution_max)
+    valeur = valeur_max
     tours = 0
-    while T > 0.001:
-        s_prime = choisir_voisin(graph, s)
-        valeur = saved_nodes_count(graph, s_prime)
-
-        # Accepter si meilleure ou avec probabilité
-        if valeur >= valeur_max:
-            s = s_prime
-            valeur_max = valeur
-            solution_max = s_prime[:]
-        else:
-            delta = valeur - saved_nodes_count(graph, s)
-            proba = exp(delta / T)
-            if random.random() < proba:
+    while T > 1:
+        max_sans_amelioration = 60
+        compteur_iter = 0
+        while compteur_iter < max_sans_amelioration:
+            compteur_iter += 1
+            s_prime = choisir_voisin(graph, s)
+            valeur_prime = saved_nodes_count(graph, s_prime)
+            if valeur_prime > valeur_max:
                 s = s_prime
-
-        T *= 0.999  # Refroidissement
+                valeur = valeur_prime
+                valeur_max = valeur_prime
+                solution_max = s_prime[:]
+                #print("Amélioration trouvée : ", solution_max, " pour : ", valeur_max, "a ", compteur_iter)
+                compteur_iter = 0  # reset si amélioration
+                
+            else:
+                delta = valeur_prime - valeur
+                proba = exp(delta / T)
+                if random.random() < proba:
+                    s = s_prime
+                    valeur = valeur_prime
+        T *= 0.99  # Refroidissement
         tours += 1
-    print("nombre de tours : " + str(tours))
+    #print("nombre de tours : " + str(tours))
     return solution_max, valeur_max
 
 
-
-graph = load_graph("tree/arbre_0.txt")
-
-
-result, total = plusGrandNombreDeFilsPuisGrandSousArbre(graph.arcs)
-res, tot = plusGrandSousArbreFirst(graph.arcs)
-r, t = plusGrandSousArbrePuisFils(graph.arcs)
-
-
-print("Arêtes supprimées :", result, " ou alors :", res, " ou alors :", r)
-print("Nombre de sommets sauvés :", total, "ou alors :", tot, " ou alors :", t)
-
-#resultat, total = recuit_simule(graph, result, 100)
-#print(resultat, total)
-
-def test():
-    for i in range(1):
+def test(n):
+    
+    for i in range(n):
         txt = "tree/arbre_"+str(i)+".txt"
         graph = load_graph(txt)
         result1, total1 = plusGrandSousArbreFirst(graph.arcs)
-        result2, total2 = recuit_simule(graph, result1, 100)
-        if result1 != result2:
-            print("différence : ")
-            print(result1, total1)
-            print(result2, total2)
+        result2, total2 = plusGrandSousArbrePuisFils(graph.arcs)
+        result3, total3 = plusGrandNombreDeFilsPuisGrandSousArbre(graph.arcs)
+        
+        options = [(total1, result1),(total2, result2),(total3, result3),]
+        _, worst_result = min(options, key=lambda x: x[0])
+        result4, total4 = recuit_simule(graph, worst_result, 50)
+        print("test sur le fichier :", txt, end=" ")
+        
+        best_total, best_result = max(options, key=lambda x: x[0])
+        print("résultat max des algos facile :", best_total, " avec :", best_result)
+
+        if total4 > best_total:
+            print("Recuit meilleur que les autres algos : ", result4, total4)
+        elif total4 == best_total:
+            print("Pas de différence")
+        else:
+            print("Recuit moins bon que les autres algos : ", result4, total4)
+        print("")
+
+
+test(30)
