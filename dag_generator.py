@@ -98,6 +98,50 @@ def creer_dag_aleatoire_connexe(n, p=0.3):
                     
     return nodes, dag
 
+def creer_graph_aleatoire_connexe(n, p=0.3):
+    """
+    Crée un DAG aléatoire connexe (le graphe sous-jacent est connexe) représenté
+    sous forme de dictionnaire (liste d'adjacence). La construction se fait en deux étapes :
+    
+      1. Création d'un arbre orienté couvrant (spanning tree) pour assurer la connexité.
+         On choisit une racine aléatoire en mélangeant la liste des nœuds et, pour chaque nœud
+         suivant, on connecte ce nœud à un nœud déjà rencontré.
+         
+      2. Ajout optionnel d'arêtes supplémentaires entre les paires de nœuds 
+         respectant l'ordre établi (i < j) avec une probabilité p, sans dupliquer les arêtes existantes.
+    
+    Paramètres:
+        n (int)   : nombre de nœuds du graphe.
+        p (float) : probabilité d'ajouter une arête entre deux nœuds (en plus de l'arbre couvrant), par défaut 0.3.
+        
+    Retourne:
+        tuple: (ordre, dag)
+            - ordre (list) : liste des nœuds dans l'ordre aléatoire utilisé pour l'orientation du DAG.
+            - dag (dict)   : dictionnaire représentant le DAG, où chaque clé est un nœud et
+                             la valeur associée est la liste de ses successeurs.
+    """
+    # 1. Création et mélange des nœuds pour établir un ordre aléatoire
+    nodes = list(range(1, n+1))
+    
+    # Initialisation du DAG : chaque nœud aura une liste vide de successeurs
+    dag = {node: [] for node in nodes}
+    
+    # 2. Création d'un arbre couvrant pour assurer la connexité
+    # Le premier nœud de la liste mélangée est la racine
+    for i in range(1, n):
+        parent = random.choice(nodes[:i])
+        dag[parent].append(nodes[i])
+    
+    # 3. Ajout d'arêtes supplémentaires en respectant l'ordre pour conserver l'acyclicité
+    for i in range(n):
+        for j in range(n):
+            # On ajoute une arête de nodes[i] vers nodes[j] si elle n'existe pas déjà
+            if nodes[j] not in dag[nodes[i]]:
+                if random.random() < p:
+                    dag[nodes[i]].append(nodes[j])
+                    
+    return nodes, dag
+
 def create_file(filename, dag):
     """
     Crée un fichier texte contenant la représentation du DAG.
@@ -114,6 +158,22 @@ def create_file(filename, dag):
             for successor in successors:
                 f.write(f"{node} {successor}\n")
 
+def create_n_graphe(n, taille = 10, p = 0.3):
+    """
+    Crée n DAGs aléatoires et les enregistre dans un fichier texte.
+    
+    Paramètres:
+        n (int)   : nombre de DAGs à créer.
+        taille (int): nombre de nœuds dans chaque DAG.
+        p (float) : probabilité d'ajouter une arête entre deux nœuds, par défaut 0.3.
+    """
+    dossier = Path("dag")
+    # Crée le dossier s'il n'existe pas
+    dossier.mkdir(parents=True, exist_ok=True)
+    for i in range(n):
+        _, dag = creer_graph_aleatoire_connexe(taille, p)
+        create_file(f"graph/graph_{i}.txt", dag)
+
 def create_n_dag(n, taille = 10, p = 0.3):
     """
     Crée n DAGs aléatoires et les enregistre dans un fichier texte.
@@ -128,7 +188,7 @@ def create_n_dag(n, taille = 10, p = 0.3):
     dossier.mkdir(parents=True, exist_ok=True)
     for i in range(n):
         _, dag = creer_dag_aleatoire_connexe(taille, p)
-        create_file(f"dagBig/dag_{i}.txt", dag)
+        create_file(f"dag/dag_{i}.txt", dag)
 
 def create_n_tree(n, taille = 10):
     """
@@ -151,4 +211,5 @@ if __name__ == "__main__":
     p = 0.3  # Probabilité pour l'ajout d'arêtes supplémentaires
     # create_n_dag(30, 7, p)  # Crée 10 DAGs aléatoires avec 5 nœuds chacun
     # create_n_tree(30, 10)  # Crée 10 arbres orientés aléatoires avec 5 nœuds chacun
-    create_n_dag(10, 10, 0.1)
+    # create_n_dag(10, 100, 0.1)
+    create_n_graphe(1, 10, 0.1)
