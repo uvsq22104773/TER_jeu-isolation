@@ -486,7 +486,7 @@ def random_isolation(graph: Graph, occur_max: int = 100):
     return best_chain, best_score, resultat
 
 # graph = load_graph("tree/arbre_0.txt")
-graph = load_graph("dag/dag_2.txt")
+graph = load_graph("dag/dag_0.txt")
 
 # print(graph.infest)
 # print(graph.arcs)
@@ -507,7 +507,7 @@ resultat, total, tours, resultat4 = tabu_search(graph)
 end = time.time()
 
 print("Nombre d'occurence total =", tours)
-print("Arêtes supprimées :", resultat)
+# print("Arêtes supprimées :", resultat)
 print("Nombre de sommets sauvés :", total, score_chain_pas_opti(graph, resultat))
 print(f"Temps d'éxecution : {end - start}s")
 
