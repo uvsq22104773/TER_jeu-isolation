@@ -203,7 +203,7 @@ def filter_edges(graph, edges_to_remove):
     return remaining_edges
 
 
-def choisir_voisin(graph, s):
+def choisir_voisin_arbre(graph, s):
     voisin = s[:]
 
     voisin.remove(random.choice(voisin))
@@ -219,26 +219,129 @@ def choisir_voisin(graph, s):
 
     return voisin
 
-def recuit_simule(graph, s, T):
+def choisir_voisin_dag1(graph, s):
+    voisin = s[:]
+
+    voisin.remove(random.choice(voisin))
+    arcs_to_choose = graph.list_arcs
+   
+    if arcs_to_choose == []:
+        return voisin
+    arc = random.choice(arcs_to_choose)
+    while arc in voisin:
+        arc = random.choice(arcs_to_choose)
+    voisin.append(arc)
+
+    return voisin
+
+def choisir_voisin_dag2(graph, s):
+    tous_arcs = s[:]
+
+    for arc in graph.list_arcs:
+        if arc not in tous_arcs:
+            tous_arcs.append(arc)
+    i, j = random.sample(range(len(tous_arcs)), 2)
+    voisin = tous_arcs[:]
+    voisin[i], voisin[j] = voisin[j], voisin[i]
+
+    return voisin
+
+def compute_reachability_counts(graph):
+    """
+    graph: dict node -> list of successors
+    Retourne reach[v] = taille du sous-DAG accessible depuis v (incluant v).
+    """
+    # 1. Tri topologique
+    in_deg = {u: 0 for u in graph}
+    for u in graph:
+        for v in graph[u]:
+            in_deg[v] += 1
+    queue = deque(u for u in graph if in_deg[u] == 0)
+    topo = []
+    while queue:
+        u = queue.popleft()
+        topo.append(u)
+        for v in graph[u]:
+            in_deg[v] -= 1
+            if in_deg[v] == 0:
+                queue.append(v)
+    # 2. DP en ordre inverse
+    reach = {u: 1 for u in graph}  # compte soi-même
+    for u in reversed(topo):
+        for v in graph[u]:
+            reach[u] += reach[v]
+    return reach
+
+def greedy_initial_solution(graph):
+    """
+    Simule la propagation/infection et choisit à chaque étape
+    l'arc à couper qui sauve le plus grand sous-DAG.
+    
+    graph: dict node -> list of successors (mutable copy)
+    start: nœud initialement infecté
+    """
+    # Copie des arcs
+    succ = {u: set(vs) for u, vs in graph.items()}
+    reach = compute_reachability_counts(graph)
+    
+    infected = {1}
+    solution = []  # liste des arcs coupés
+    
+    while True:
+        # 1️⃣ calcul du frontier
+        frontier = []
+        for u in list(infected):
+            for v in succ[u]:
+                if v not in infected:
+                    frontier.append((u, v))
+        if not frontier:
+            break
+        
+        # 2️⃣ choisir l'arc qui sauve le plus grand sous-DAG
+        best_arc = max(frontier, key=lambda uv: reach[uv[1]])
+        solution.append(best_arc)
+        succ[best_arc[0]].remove(best_arc[1])
+        
+        # 3️⃣ propager infection d'un pas
+        new_inf = set()
+        for u in infected:
+            for v in succ[u]:
+                if v not in infected:
+                    new_inf.add(v)
+        if not new_inf:
+            break
+        infected |= new_inf
+    
+    # renvoyer la liste des arcs coupés et le nombre de sauvés
+    saved = len(graph) - len(infected)
+    return solution, saved
+
+def recuit_simule(graph, s, T, option=1):
     solution_max = s[:]
-    resultats = []
     valeur_max = saved_nodes_count(graph, solution_max)
     valeur = valeur_max
     tours = 0
+    amelioration = []
     while T > 1:
         max_sans_amelioration = 60
         compteur_iter = 0
         while compteur_iter < max_sans_amelioration:
+            tours += 1
             compteur_iter += 1
-            s_prime = choisir_voisin(graph, s)
+            if option == 0:
+                s_prime = choisir_voisin_arbre(graph, s)
+            if option == 1:
+                s_prime = choisir_voisin_dag1(graph, s)
+            else:
+                s_prime = choisir_voisin_dag2(graph, s)
             valeur_prime = saved_nodes_count(graph, s_prime)
-            resultats.append(valeur)
             if valeur_prime > valeur_max:
+                amelioration.append((valeur_prime - valeur_max, tours))
                 s = s_prime
                 valeur = valeur_prime
                 valeur_max = valeur_prime
                 solution_max = s_prime[:]
-                #print("Amélioration trouvée : ", solution_max, " pour : ", valeur_max, "a ", compteur_iter)
+                print("Amélioration trouvée : ", solution_max, " pour : ", valeur_max, "au bout de  ", compteur_iter, " itérations pour un total de ", tours)
                 compteur_iter = 0  # reset si amélioration
                 
             else:
@@ -248,9 +351,8 @@ def recuit_simule(graph, s, T):
                     s = s_prime
                     valeur = valeur_prime
         T *= 0.99  # Refroidissement
-        tours += 1
-    print("nombre de tours : " + str(tours))
-    return solution_max, valeur_max, tours, resultats
+    #print("nombre de tours : " + str(tours))
+    return solution_max, valeur_max, amelioration
 
 def score_chain_pas_opti(graph, rm_arcs):
     """
@@ -492,14 +594,23 @@ graph = load_graph("dag/dag_2.txt")
 # print(graph.arcs)
 # print(graph.list_arcs)
 # result, total = plusGrandSousArbreFirst(graph.arcs, [45])
-"""print("Recuit")
+print("Recuit")
 start = time.time()
-resultat, total, tours, resultat1 = recuit_simule(graph, graph.list_arcs, 50)
+result1, total1 = greedy_initial_solution(graph.arcs)
+print("résultat de algo facile :", result1, " avec :", total1)
+result3, total3, ame1 = recuit_simule(graph, result1, 50, option=1)
+result4, total4, ame2 = recuit_simule(graph, graph.list_arcs, 50, option=2)
 end = time.time()
 
 # print("Arêtes supprimées :", resultat)
-print("Nombre de sommets sauvés :", total, score_chain_pas_opti(graph, resultat))
-print(f"Temps d'éxecution : {end - start}s")"""
+if total4 > total3:
+    print("permutation totale meilleurs :", result4, total4)
+elif total4 == total3:
+    print("Pas de différence")
+else:
+    print("swap d'acs meilleurs : ", result3, total3)
+print("")
+print(f"Temps d'éxecution : {end - start}s")
 
 print("\nTabou")
 start = time.time()
