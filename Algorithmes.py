@@ -232,7 +232,7 @@ def recuit_simule(graph, s, T):
             compteur_iter += 1
             s_prime = choisir_voisin(graph, s)
             valeur_prime = saved_nodes_count(graph, s_prime)
-        resultats.append(valeur)
+            resultats.append(valeur)
             if valeur_prime > valeur_max:
                 s = s_prime
                 valeur = valeur_prime
@@ -391,6 +391,69 @@ def randomized_epsilon_greedy(graph: Graph, epsilon: float, max_iter: int):
     
     return best_chain, best_score, resultat
 
+def tabu_search(graph: Graph):
+    """
+    Tabu Search pour l'isolation de propagation sur un DAG.
+    Retourne la meilleure suite d'arcs à supprimer.
+    """
+    # --- Initialisation ---
+    # on choisit une chaîne de base (par exemple aléatoire)
+    taille = len(graph.list_arcs)
+    chaine_max = random.sample(graph.list_arcs, taille)
+    max_score = score_chain(graph, chaine_max)
+    
+    resultat = []
+    chaine = list(chaine_max)
+    note = max_score
+    resultat.append(max_score)
+    
+    tabu = deque()
+    tabu.append(tuple(chaine))
+    
+    tours = 0
+    occurence_max = taille
+    occurence = 0
+    j = 0  # indice pivot (0-based)
+    
+    # --- Boucle principale ---
+    while occurence < occurence_max:
+        # on essaie tous les swaps (i, j)
+        for i in range(taille):
+            if i == j:
+                continue
+            tmp = chaine.copy()
+            # échange des positions i et j
+            tmp[i], tmp[j] = tmp[j], tmp[i]
+            tmp_tup = tuple(tmp)
+            tmp_score = score_chain(graph, tmp)
+            
+            # si non tabou ou s'il améliore le meilleur global
+            if tmp_tup not in tabu or tmp_score > max_score:
+                # acceptation si améliore la note courante
+                if tmp_score > note:
+                    note = tmp_score
+                    chaine = tmp
+        # fin du balayage sur j fixe
+        
+        occurence += 1
+        tours += 1
+        resultat.append(note)
+        # si on améliore le meilleur global, on met à jour et on réinitialise
+        if note > max_score:
+            max_score = note
+            chaine_max = chaine.copy()
+            occurence = 0
+        
+        # mise à jour de la liste tabou
+        tabu.append(tuple(chaine))
+        if len(tabu) > 20:
+            tabu.popleft()
+        
+        # avancer le pivot j
+        j = (j + 1) % taille
+    
+    return chaine_max, max_score, tours, resultat
+
 def random_isolation(graph: Graph, occur_max: int = 100):
     """
     Algorithme purement aléatoire pour isoler la propagation dans un arbre/DAG.
@@ -423,18 +486,28 @@ def random_isolation(graph: Graph, occur_max: int = 100):
     return best_chain, best_score, resultat
 
 # graph = load_graph("tree/arbre_0.txt")
-graph = load_graph("dagBig/dag_0.txt")
+graph = load_graph("dag/dag_2.txt")
 
 # print(graph.infest)
 # print(graph.arcs)
 # print(graph.list_arcs)
 # result, total = plusGrandSousArbreFirst(graph.arcs, [45])
-print("Recuit")
+"""print("Recuit")
 start = time.time()
-resultat, total, tours, resultat1 = recuit_simule(graph, graph.list_arcs, 100)
+resultat, total, tours, resultat1 = recuit_simule(graph, graph.list_arcs, 50)
 end = time.time()
 
 # print("Arêtes supprimées :", resultat)
+print("Nombre de sommets sauvés :", total, score_chain_pas_opti(graph, resultat))
+print(f"Temps d'éxecution : {end - start}s")"""
+
+print("\nTabou")
+start = time.time()
+resultat, total, tours, resultat4 = tabu_search(graph)
+end = time.time()
+
+print("Nombre d'occurence total =", tours)
+print("Arêtes supprimées :", resultat)
 print("Nombre de sommets sauvés :", total, score_chain_pas_opti(graph, resultat))
 print(f"Temps d'éxecution : {end - start}s")
 
@@ -456,11 +529,12 @@ end = time.time()
 print("Nombre de sommets sauvés :", score, score_chain_pas_opti(graph, result))
 print(f"Temps d'éxecution : {end - start}s")
 
-x = list(range(1, len(resultat1) + 1))
+x = list(range(1, len(resultat4) + 1))
 
-plt.plot(x, resultat1, label='Recuit')
-plt.plot(x, resultat2, label='Random')
-plt.plot(x, resultat3, label='random epsilon greedy')
+# plt.plot(x, resultat1, label='Recuit')
+# plt.plot(x, resultat2, label='Random')
+# plt.plot(x, resultat3, label='random epsilon greedy')
+plt.plot(x, resultat4, label='Tabou')
 
 plt.xlabel('Numéro de la simulation')
 plt.ylabel('Valeur sauvé')
