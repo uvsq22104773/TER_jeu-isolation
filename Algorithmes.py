@@ -590,6 +590,15 @@ def random_isolation(graph: Graph, occur_max: int = 100):
 # graph = load_graph("tree/arbre_0.txt")
 graph = load_graph("dag/dag_0.txt")
 
+def genereGraph(listIter, listBase):
+    max_taille = 0
+    for elem in listIter:
+        if len(elem) > max_taille:
+            max_taille = len(elem)
+    listRes = [0]*max_taille
+    listNb = [0]*max_taille
+    
+
 # print(graph.infest)
 # print(graph.arcs)
 # print(graph.list_arcs)
