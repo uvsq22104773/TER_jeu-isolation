@@ -2,6 +2,8 @@ from solution_exact import saved_nodes_count
 from dataclasses import dataclass
 from math import exp
 import random
+import matplotlib.pyplot as plt
+
 
 
 
@@ -146,10 +148,12 @@ def recuit_simule(graph, s, T, option=1):
     valeur_max = saved_nodes_count(graph, solution_max)
     valeur = valeur_max
     tours = 0
+    amelioration = []
     while T > 1:
         max_sans_amelioration = 60
         compteur_iter = 0
         while compteur_iter < max_sans_amelioration:
+            tours += 1
             compteur_iter += 1
             if option == 1:
                 s_prime = choisir_voisin(graph, s)
@@ -157,11 +161,12 @@ def recuit_simule(graph, s, T, option=1):
                 s_prime = choisir_voisin2(graph, s)
             valeur_prime = saved_nodes_count(graph, s_prime)
             if valeur_prime > valeur_max:
+                amelioration.append((valeur_prime - valeur_max, tours))
                 s = s_prime
                 valeur = valeur_prime
                 valeur_max = valeur_prime
                 solution_max = s_prime[:]
-                print("Amélioration trouvée : ", solution_max, " pour : ", valeur_max, "a ", compteur_iter)
+                print("Amélioration trouvée : ", solution_max, " pour : ", valeur_max, "au bout de  ", compteur_iter, " itérations pour un total de ", tours)
                 compteur_iter = 0  # reset si amélioration
                 
             else:
@@ -171,22 +176,41 @@ def recuit_simule(graph, s, T, option=1):
                     s = s_prime
                     valeur = valeur_prime
         T *= 0.99  # Refroidissement
-        tours += 1
     #print("nombre de tours : " + str(tours))
-    return solution_max, valeur_max
+    return solution_max, valeur_max, amelioration
+
+def afficher_ameliorations(ameliorations, titre="Améliorations lors du recuit simulé", color='skyblue'):
+    if not ameliorations:
+        print("Aucune amélioration à afficher.")
+        return
+
+    gains = [a[0] for a in ameliorations]
+    iterations = [a[1] for a in ameliorations]
+
+    plt.figure(figsize=(10, 5))
+    plt.plot(iterations, gains, marker='o', linestyle='-', color=color)
+    plt.xlabel("Itération")
+    plt.ylabel("Gain (nœuds sauvés)")
+    plt.title(titre)
+    plt.grid(True, linestyle='--', alpha=0.5)
+    plt.tight_layout()
+    plt.show()
+
+
 
 
 def test(n):
     
     for i in range(n):
-        #txt = "dag/dag_"+str(i)+".txt"
-        txt = "dag/dagTest.txt"
+
+        txt = "dag/dag_"+str(i)+".txt"
+        #txt = "dag/dagTest.txt"
         graph = load_graph(txt)
         result1, total1 = greedy_initial_solution(graph.arcs)
         if len(result1) == 0: continue
         
-        result3, total3 = recuit_simule(graph, result1, 50, option=1)
-        result4, total4 = recuit_simule(graph, result1, 50, option=2)
+        result3, total3, ame1 = recuit_simule(graph, result1, 50, option=1)
+        result4, total4, ame2 = recuit_simule(graph, graph.list_arcs, 50, option=2)
         print("test sur le fichier :", txt, end=" ")
         
         print("résultat de algo facile :", result1, " avec :", total1)
@@ -198,7 +222,15 @@ def test(n):
         else:
             print("swap d'acs meilleurs : ", result3, total3)
         print("")
-        
+        #print("swap d'acs meilleurs : ", result4, total4)
+
+        afficher_ameliorations(ame1, titre=f"Améliorations - Voisinage 1 - {txt}", color='orange')
+        afficher_ameliorations(ame2, titre=f"Améliorations - Voisinage 2 - {txt}", color='blue')
+
+
 
 
 test(1)
+
+
+
