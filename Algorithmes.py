@@ -1,9 +1,13 @@
 from solution_exact import saved_nodes_count
 from dataclasses import dataclass
+import matplotlib.pyplot as plt
+from collections import defaultdict
 from math import exp
+import heapq
 import random
-
-
+from typing import List, Tuple, Dict, Set
+import time
+from collections import deque
 
 @dataclass
 class Graph:
@@ -217,6 +221,7 @@ def choisir_voisin(graph, s):
 
 def recuit_simule(graph, s, T):
     solution_max = s[:]
+    resultats = []
     valeur_max = saved_nodes_count(graph, solution_max)
     valeur = valeur_max
     tours = 0
@@ -227,6 +232,7 @@ def recuit_simule(graph, s, T):
             compteur_iter += 1
             s_prime = choisir_voisin(graph, s)
             valeur_prime = saved_nodes_count(graph, s_prime)
+        resultats.append(valeur)
             if valeur_prime > valeur_max:
                 s = s_prime
                 valeur = valeur_prime
@@ -243,34 +249,222 @@ def recuit_simule(graph, s, T):
                     valeur = valeur_prime
         T *= 0.99  # Refroidissement
         tours += 1
-    #print("nombre de tours : " + str(tours))
-    return solution_max, valeur_max
+    print("nombre de tours : " + str(tours))
+    return solution_max, valeur_max, tours, resultats
 
-
-def test(n):
+def score_chain_pas_opti(graph, rm_arcs):
+    """
+    Compte le nombre de noeuds sauver dans un graph
+    à partir d'une suite d'arcs.
+    """
+    infected_nodes = set()
+    infected_nodes.add(graph.infest)
+    copy_arcs = {}
+    for node in graph.arcs:
+        copy_arcs[node] = graph.arcs[node].copy()
+    for arc in rm_arcs:
+        copy_arcs[arc[0]].remove(arc[1])
+        for node in list(infected_nodes):
+            infected_nodes.update(copy_arcs[node])
     
-    for i in range(n):
-        txt = "tree/arbre_"+str(i)+".txt"
-        graph = load_graph(txt)
-        result1, total1 = plusGrandSousArbreFirst(graph.arcs)
-        result2, total2 = plusGrandSousArbrePuisFils(graph.arcs)
-        result3, total3 = plusGrandNombreDeFilsPuisGrandSousArbre(graph.arcs)
+    while True:
+        new_infected = set()
+        for node in infected_nodes:
+            new_infected.update(copy_arcs[node])
+        if not new_infected - infected_nodes:
+            break
+        infected_nodes.update(new_infected)
+
+    return len(graph.arcs) - len(infected_nodes)
+
+from collections import deque
+
+def score_chain(graph, chain):
+    """
+    Simule la propagation temporelle avec suppression séquentielle d'arcs.
+    À chaque étape :
+      1) on supprime l'arc de la chaîne,
+      2) on propage l'infection d'un pas (tau=1 pour chaque arc).
+    """
+    # Ensemble des arcs à supprimer au fur et à mesure
+    removed = set()
+    # Sommets infectés et frontière actuelle
+    infected = {graph.infest}
+    frontier = {graph.infest}
+
+    for u, v in chain:
+        # 1) suppression de l'arc
+        removed.add((u, v))
+
+        # 2) propagation d'un pas
+        new_frontier = set()
+        for x in frontier:
+            for y in graph.arcs.get(x, []):
+                if (x, y) not in removed and y not in infected:
+                    infected.add(y)
+                    new_frontier.add(y)
+        frontier = new_frontier
+
+    # Optionnel : propagation finale jusqu'à stabilisation
+    queue = deque(frontier)
+    while queue:
+        x = queue.popleft()
+        for y in graph.arcs.get(x, []):
+            if (x, y) not in removed and y not in infected:
+                infected.add(y)
+                queue.append(y)
+
+    # Calcul des sommets sauvés
+    all_nodes = set(graph.arcs.keys()) | {v for children in graph.arcs.values() for v in children}
+    return len(all_nodes) - len(infected)
+
+def randomized_epsilon_greedy(graph: Graph, epsilon: float, max_iter: int):
+    """
+    ε-greedy avec tas binaire persistant pour exploitation en O(log m).
+    Retourne la meilleure chaîne (permutation d’arcs) et son score.
+    """
+    resultat = []
+    j_max = len(graph.list_arcs)
+    # Compteurs par position et par arc
+    N = [defaultdict(int) for _ in range(j_max)]
+    W = [defaultdict(int) for _ in range(j_max)]
+    
+    # Chaîne initiale aléatoire
+    best_chain = random.sample(graph.list_arcs, j_max)
+    best_score = score_chain(graph, best_chain)
+    resultat.append(best_score)
+    
+    # Initialisation des tas (ratio initial = 0)
+    heaps = []
+    for j in range(j_max):
+        heap = [(0.0, arc) for arc in graph.list_arcs]
+        heapq.heapify(heap)
+        heaps.append(heap)
+    for _ in range(max_iter):
+        chain: List[Tuple[int, int]] = []
+        used: Set[Tuple[int, int]] = set()
+        for j in range(j_max):
+            if len(used) == j_max:
+                break
+            
+            # Exploration vs exploitation
+            if random.random() < epsilon:
+                # exploration
+                choices = [a for a in graph.list_arcs if a not in used]
+                arc = random.choice(choices)
+            else:
+                heap = heaps[j]
+                while heap:
+                    neg_ratio, cand = heap[0]
+                    current = W[j][cand] / (N[j][cand] + 1)
+
+                    if cand in used:
+                        heapq.heappop(heap)
+                        continue
+
+                    if -neg_ratio != current:
+                        heapq.heapreplace(heap, (-current, cand))
+                        continue
+
+                    arc = cand
+                    break
+                else:
+                    # pas de candidat (sauvegarde)
+                    remaining = [a for a in graph.list_arcs if a not in used]
+                    arc = random.choice(remaining)
+
+            chain.append(arc)
+            used.add(arc)
+        # Évaluation et rétro-propagation des scores
+        sc = score_chain(graph, chain)
+        resultat.append(sc)
+        for k, a in enumerate(chain):
+            N[k][a] += 1
+            W[k][a] += sc
+            # Mettre à jour le tas avec le nouveau ratio
+            new_ratio = W[k][a] / (N[k][a] + 1)
+            heapq.heappush(heaps[k], (-new_ratio, a))
         
-        options = [(total1, result1),(total2, result2),(total3, result3),]
-        _, worst_result = min(options, key=lambda x: x[0])
-        result4, total4 = recuit_simule(graph, worst_result, 50)
-        print("test sur le fichier :", txt, end=" ")
-        
-        best_total, best_result = max(options, key=lambda x: x[0])
-        print("résultat max des algos facile :", best_total, " avec :", best_result)
+        if sc > best_score:
+            best_score = sc
+            best_chain = list(chain)
+    
+    return best_chain, best_score, resultat
 
-        if total4 > best_total:
-            print("Recuit meilleur que les autres algos : ", result4, total4)
-        elif total4 == best_total:
-            print("Pas de différence")
-        else:
-            print("Recuit moins bon que les autres algos : ", result4, total4)
-        print("")
+def random_isolation(graph: Graph, occur_max: int = 100):
+    """
+    Algorithme purement aléatoire pour isoler la propagation dans un arbre/DAG.
+    À chaque itération, on construit une chaîne de coupures aléatoire, puis on garde
+    la meilleure sur 'occur_max' essais.
+    """
+    # Chaîne de base (premier essai)
+    def build_random_chain():
+        chain = []
+        tmp_chain = graph.list_arcs.copy()
+        while len(tmp_chain) > 0:
+            arc = random.choice(tmp_chain)
+            tmp_chain.remove(arc)
+            chain.append(arc)
+        return chain
 
+    resultat = []
+    best_chain = build_random_chain()
+    best_score = score_chain(graph, best_chain)
+    resultat.append(best_score)
 
-test(30)
+    for _ in range(occur_max):
+        chain = build_random_chain()
+        sc = score_chain(graph, chain)
+        resultat.append(sc)
+        if sc > best_score:
+            best_score = sc
+            best_chain = chain
+
+    return best_chain, best_score, resultat
+
+# graph = load_graph("tree/arbre_0.txt")
+graph = load_graph("dagBig/dag_0.txt")
+
+# print(graph.infest)
+# print(graph.arcs)
+# print(graph.list_arcs)
+# result, total = plusGrandSousArbreFirst(graph.arcs, [45])
+print("Recuit")
+start = time.time()
+resultat, total, tours, resultat1 = recuit_simule(graph, graph.list_arcs, 100)
+end = time.time()
+
+# print("Arêtes supprimées :", resultat)
+print("Nombre de sommets sauvés :", total, score_chain_pas_opti(graph, resultat))
+print(f"Temps d'éxecution : {end - start}s")
+
+print("\nRandom")
+start = time.time()
+result, score, resultat2 = random_isolation(graph, tours)
+end = time.time()
+
+# print("Arêtes supprimées :", result)
+print("Nombre de sommets sauvés :", score, score_chain_pas_opti(graph, result))
+print(f"Temps d'éxecution : {end - start}s")
+
+print("\nRandom epsilon greedy")
+start = time.time()
+result, score, resultat3 = randomized_epsilon_greedy(graph, 0.3, tours)
+end = time.time()
+
+# print("Arêtes supprimées :", result)
+print("Nombre de sommets sauvés :", score, score_chain_pas_opti(graph, result))
+print(f"Temps d'éxecution : {end - start}s")
+
+x = list(range(1, len(resultat1) + 1))
+
+plt.plot(x, resultat1, label='Recuit')
+plt.plot(x, resultat2, label='Random')
+plt.plot(x, resultat3, label='random epsilon greedy')
+
+plt.xlabel('Numéro de la simulation')
+plt.ylabel('Valeur sauvé')
+plt.title('Graphique de 3 courbes')
+plt.legend()
+plt.grid(True)
+plt.show()

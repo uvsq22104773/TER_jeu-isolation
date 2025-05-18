@@ -129,7 +129,7 @@ def create_n_dag(n, taille = 10, p = 0.3):
     dossier.mkdir(parents=True, exist_ok=True)
     for i in range(n):
         _, dag = creer_dag_aleatoire_connexe(taille, p)
-        create_file(f"dag/dag_{i}.txt", dag)
+        create_file(f"dagBig/dag_{i}.txt", dag)
 
 def create_n_tree(n, taille = 10):
     """
@@ -151,5 +151,5 @@ if __name__ == "__main__":
     n = 5   # Nombre de nœuds dans le DAG
     p = 0.3  # Probabilité pour l'ajout d'arêtes supplémentaires
     # create_n_dag(30, 7, p)  # Crée 10 DAGs aléatoires avec 5 nœuds chacun
-    create_n_tree(30, 10)  # Crée 10 arbres orientés aléatoires avec 5 nœuds chacun
-    # create_n_dag(1, 100)
+    # create_n_tree(30, 10)  # Crée 10 arbres orientés aléatoires avec 5 nœuds chacun
+    create_n_dag(10, 200, 0.1)
